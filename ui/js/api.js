@@ -15,7 +15,10 @@ export async function getToken(force = false) {
 
 // When Spotify says "too many requests", everyone waits until this time instead of retrying
 // on their own (which only keeps the limit going). Background polls skip instead of waiting.
-let coolUntil = 0;
+// Player control and page data cool down separately: with the Spotify-account logins pages
+// come from the web player's API, and a busy player endpoint must not stall them.
+const coolUntil = { player: 0, data: 0 };
+const groupOf = (url) => (/\/me\/player(?!\/recently-played)/.test(url) ? 'player' : 'data');
 // Short-lived cache for page data, so going back to a page is instant. Any change (PUT/POST/
 // DELETE) clears it; the live player endpoints are never cached.
 const CACHE_MS = 120000;
@@ -55,8 +58,9 @@ function quotaError(ms) {
 }
 
 async function request(url, method, body, background) {
+  const group = groupOf(url);
   for (let attempt = 0; attempt < 4; attempt++) {
-    const wait = coolUntil - Date.now();
+    const wait = coolUntil[group] - Date.now();
     if (wait > 60000) throw quotaError(wait);
     if (wait > 0) {
       if (background) throw new Error('rate limited');
@@ -76,7 +80,7 @@ async function request(url, method, body, background) {
     }
     if (res.status === 429) {
       const secs = res.retry_after || 2;
-      coolUntil = Math.max(coolUntil, Date.now() + secs * 1000);
+      coolUntil[group] = Math.max(coolUntil[group], Date.now() + secs * 1000);
       // a long block (Spotify's daily quota, up to 24 h): stop asking and say so right away
       if (secs > 60) throw quotaError(secs * 1000);
       if (background) throw new Error('rate limited');

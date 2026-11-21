@@ -512,6 +512,7 @@ export const nowPlaying = {
     if (phone.matches && tab !== 'none') setTab('none', false);
     if (tab === 'queue') loadQueue();
     loop();
+    spinDisc();
   },
   hide() {
     clearTimeout(hideTimer);
@@ -550,6 +551,29 @@ function flyCover() {
 function applyLook() {
   np.classList.toggle('disc', store.get('coverShape', 'square') === 'disc');
   np.classList.toggle('no-viz', !vizOn());
+  spinDisc();
+}
+
+// Spinning disc: one turn per 24 s while playing. The angle lives here instead of in a CSS
+// animation, which restarted from 0° whenever the player was hidden, reopened or restyled,
+// and it slows down / speeds up smoothly instead of stopping dead on pause.
+const disc = { angle: 0, speed: 0, last: 0, raf: 0 };
+const DISC_SPEED = 360 / 24000; // degrees per ms
+function spinDisc() {
+  if (disc.raf || !np.classList.contains('disc')) return;
+  const tick = (now) => {
+    const dt = disc.last ? Math.min(100, now - disc.last) : 0;
+    disc.last = now;
+    const target = np.classList.contains('paused') || !player.state.playing ? 0 : DISC_SPEED;
+    disc.speed += (target - disc.speed) * Math.min(1, dt / 350);
+    if (Math.abs(disc.speed) < 1e-5) disc.speed = target;
+    disc.angle = (disc.angle + disc.speed * dt) % 360;
+    $('#np-cover')?.style.setProperty('--disc-rot', `${disc.angle.toFixed(2)}deg`);
+    // keep running only while it's visible and still turning
+    if (np.classList.contains('disc') && nowPlaying.open && !document.hidden && (disc.speed || target)) disc.raf = requestAnimationFrame(tick);
+    else disc.raf = disc.last = 0;
+  };
+  disc.raf = requestAnimationFrame(tick);
 }
 applyLook();
 
@@ -861,11 +885,13 @@ bus.on('state', (s) => {
   clearTimeout(pauseTimer);
   if (s.playing) np.classList.remove('paused');
   else pauseTimer = setTimeout(() => !player.state.playing && np.classList.add('paused'), 500);
+  if (s.playing) spinDisc();
   npVol.set(s.volume);
 });
 
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden && nowPlaying.open) lyrics.reset();
+  if (!document.hidden) spinDisc();
 });
 
 $('#np-close').addEventListener('click', () => nowPlaying.hide());

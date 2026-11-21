@@ -48,6 +48,7 @@ const BUILTIN: &[(&str, &str)] = &[
     ("addToPlaylist", "b907ad6b088d5bf7680fa81198996d58398c2d55dfcdf59fcc959e0be98a418a"),
     ("removeFromPlaylist", "b907ad6b088d5bf7680fa81198996d58398c2d55dfcdf59fcc959e0be98a418a"),
     ("fetchEntitiesForRecentlyPlayed", "cf5d2e94ffd82788470788ae1f6090cc3e9e774fb8fd383580634c6e6f50f7be"),
+    ("decorateContextTracks", "383de00240775c39a6afe0b1055dc562b2a3930894201f9762f3fc32a74971c7"),
 ];
 
 /// What the UI gets back: the same fields the Web API path returns.
@@ -95,12 +96,12 @@ pub fn forget() {
     *USER.lock().unwrap() = None;
 }
 
+/// One shared agent, so connections to Spotify are kept open and reused between requests.
 fn agent() -> ureq::Agent {
-    ureq::Agent::config_builder()
-        .timeout_global(Some(Duration::from_secs(20)))
-        .http_status_as_error(false)
-        .build()
-        .into()
+    static AGENT: OnceLock<ureq::Agent> = OnceLock::new();
+    AGENT
+        .get_or_init(|| ureq::Agent::config_builder().timeout_global(Some(Duration::from_secs(20))).http_status_as_error(false).build().into())
+        .clone()
 }
 
 fn hash_of(op: &str) -> Option<String> {
@@ -385,7 +386,7 @@ fn playlist_row(it: &Value) -> Option<Value> {
 
 // ---- URLs
 
-fn percent_decode(v: &str) -> String {
+pub fn percent_decode(v: &str) -> String {
     let b = v.as_bytes();
     let mut out = Vec::with_capacity(b.len());
     let mut i = 0;
@@ -532,7 +533,11 @@ fn library(token: &str, kind: &str, offset: u64, limit: u64) -> R<(Vec<Value>, u
 
 fn my_playlists(token: &str, r: &Req) -> R<Value> {
     let (offset, limit) = (r.num("offset", 0, 100_000), r.num("limit", 20, 50));
-    let (items, total) = library(token, "Playlists", offset, limit)?;
+    let (mut items, total) = library(token, "Playlists", offset, limit)?;
+    // the library list trails a removal by a few seconds; the rootlist is right at once
+    if let Ok(mine) = rootlist_uris(token) {
+        items.retain(|p| p["uri"].as_str().is_some_and(|u| mine.contains(u)));
+    }
     Ok(page(items, "/me/playlists", offset, limit, total, ""))
 }
 
@@ -778,20 +783,142 @@ fn recently_played(token: &str) -> R<Value> {
     Ok(json!({ "items": items }))
 }
 
+// ---- playlists in Your Library: the "rootlist" of Spotify's playlist service. The library
+// queries above don't take playlists (removeLibraryItems refuses them).
+
+fn spclient_post(token: &str, path: &str, body: &Value) -> R<Value> {
+    let mut res = agent()
+        .post(&format!("{SPCLIENT}{path}"))
+        .header("Authorization", &format!("Bearer {token}"))
+        .header("User-Agent", UA)
+        .header("app-platform", "WebPlayer")
+        .header("Accept", "application/json")
+        .content_type("application/json;charset=UTF-8")
+        .send(body.to_string().as_str())
+        .map_err(|e| Fail::Other(e.to_string()))?;
+    let status = res.status().as_u16();
+    let retry = retry_after(&res);
+    let text = res.body_mut().with_config().limit(8 * 1024 * 1024).read_to_string().unwrap_or_default();
+    if status >= 400 {
+        return Err(Fail::Http(status, text, retry));
+    }
+    Ok(serde_json::from_str(&text).unwrap_or(Value::Null))
+}
+
+fn now_ms() -> u128 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0)
+}
+
+fn rootlist_uris(token: &str) -> R<HashSet<String>> {
+    let user = username(token)?;
+    let d = spclient_get(token, &format!("/playlist/v2/user/{}/rootlist?decorate=revision,length,attributes,timestamp,owner,capabilities&bustCache={}", encode(&user), now_ms()))?;
+    Ok(d["contents"]["items"].as_array().map(|a| a.iter().filter_map(|x| x["uri"].as_str().map(String::from)).collect()).unwrap_or_default())
+}
+
+/// One change to a list, as the web player sends it.
+fn list_changes(op: Value) -> Value {
+    json!({ "deltas": [{ "ops": [op], "info": { "source": { "client": "WEBPLAYER" } } }], "wantResultingRevisions": false, "wantSyncResult": false, "nonces": [] })
+}
+
+fn rootlist_change(token: &str, uris: &[String], add: bool) -> R<()> {
+    let user = username(token)?;
+    let op = if add {
+        let ts = now_ms().to_string();
+        let items: Vec<Value> = uris.iter().map(|u| json!({ "uri": u, "attributes": { "timestamp": ts, "formatAttributes": [], "availableSignals": [] } })).collect();
+        json!({ "kind": "ADD", "add": { "addFirst": true, "items": items } })
+    } else {
+        let items: Vec<Value> = uris.iter().map(|u| json!({ "uri": u })).collect();
+        json!({ "kind": "REM", "rem": { "itemsAsKey": true, "items": items } })
+    };
+    spclient_post(token, &format!("/playlist/v2/user/{}/rootlist/changes", encode(&user)), &list_changes(op))?;
+    Ok(())
+}
+
+fn is_playlist(uri: &str) -> bool {
+    uri.starts_with("spotify:playlist:")
+}
+
 fn contains(token: &str, uris: Vec<String>) -> R<Value> {
     if uris.is_empty() {
         return Ok(json!([]));
     }
-    let d = query(token, "areEntitiesInLibrary", json!({ "uris": uris }))?;
-    let saved: Vec<bool> = d["lookup"].as_array().map(|a| a.iter().map(|x| x["data"]["saved"].as_bool().unwrap_or(false)).collect()).unwrap_or_default();
-    Ok(json!(saved))
+    let others: Vec<&String> = uris.iter().filter(|u| !is_playlist(u)).collect();
+    let mut saved: HashMap<&str, bool> = HashMap::new();
+    if !others.is_empty() {
+        let d = query(token, "areEntitiesInLibrary", json!({ "uris": others }))?;
+        for (u, x) in others.iter().zip(d["lookup"].as_array().cloned().unwrap_or_default()) {
+            saved.insert(u.as_str(), x["data"]["saved"].as_bool().unwrap_or(false));
+        }
+    }
+    if uris.iter().any(|u| is_playlist(u)) {
+        let mine = rootlist_uris(token)?;
+        for u in uris.iter().filter(|u| is_playlist(u)) {
+            saved.insert(u.as_str(), mine.contains(u));
+        }
+    }
+    Ok(json!(uris.iter().map(|u| saved.get(u.as_str()).copied().unwrap_or(false)).collect::<Vec<_>>()))
 }
 
 fn save(token: &str, uris: Vec<String>, on: bool) -> R<Value> {
-    if !uris.is_empty() {
-        query(token, if on { "addToLibrary" } else { "removeFromLibrary" }, json!({ "libraryItemUris": uris }))?;
+    let (lists, others): (Vec<String>, Vec<String>) = uris.into_iter().partition(|u| is_playlist(u));
+    if !others.is_empty() {
+        query(token, if on { "addToLibrary" } else { "removeFromLibrary" }, json!({ "libraryItemUris": others }))?;
+    }
+    if !lists.is_empty() {
+        rootlist_change(token, &lists, on)?;
     }
     Ok(Value::Null)
+}
+
+fn list_attributes(name: Option<&str>, description: Option<&str>) -> Value {
+    let mut values = json!({ "formatAttributes": [], "pictureSize": [] });
+    let mut no_value = Vec::new();
+    if let Some(n) = name.filter(|n| !n.trim().is_empty()) {
+        values["name"] = json!(n.trim());
+    }
+    match description {
+        Some(d) if !d.trim().is_empty() => values["description"] = json!(d.trim()),
+        Some(_) => no_value.push("LIST_DESCRIPTION"),
+        None => {}
+    }
+    json!({ "kind": "UPDATE_LIST_ATTRIBUTES", "updateListAttributes": { "newAttributes": { "values": values, "noValue": no_value } } })
+}
+
+fn create_playlist(token: &str, body: &Value) -> R<Value> {
+    let name = body["name"].as_str().filter(|n| !n.trim().is_empty()).unwrap_or("New playlist");
+    // a new list takes just its first ops (no "info", unlike changes to an existing one)
+    let delta = json!({ "ops": [list_attributes(Some(name), body["description"].as_str().filter(|d| !d.is_empty()))] });
+    let made = spclient_post(token, "/playlist/v2/playlist", &delta)?;
+    let uri = made["uri"].as_str().ok_or_else(|| Fail::Other("Spotify didn't make the playlist".into()))?.to_string();
+    rootlist_change(token, std::slice::from_ref(&uri), true)?;
+    let user = username(token)?;
+    Ok(json!({
+        "id": id_of(&uri), "uri": uri, "type": "playlist", "name": name, "description": body["description"],
+        "images": [], "owner": { "id": user, "uri": format!("spotify:user:{user}") },
+        "public": body["public"], "collaborative": false, "snapshot_id": made["revision"],
+    }))
+}
+
+fn update_playlist(token: &str, id: &str, body: &Value) -> R<Value> {
+    let op = list_attributes(body["name"].as_str(), body["description"].as_str());
+    if op["updateListAttributes"]["newAttributes"]["values"].as_object().is_some_and(|v| v.len() > 2) || !op["updateListAttributes"]["newAttributes"]["noValue"].as_array().unwrap().is_empty() {
+        spclient_post(token, &format!("/playlist/v2/playlist/{id}/changes"), &list_changes(op))?;
+    }
+    Ok(Value::Null)
+}
+
+/// Full Track objects for a list of track URIs (the player's now playing and queue).
+pub fn decorate_tracks(token: &str, uris: &[&String]) -> Result<Vec<Value>, String> {
+    let mut out = Vec::new();
+    for chunk in uris.chunks(50) {
+        let d = query(token, "decorateContextTracks", json!({ "uris": chunk })).map_err(|e| match e {
+            Fail::Http(s, t, _) => format!("HTTP {s}: {t}"),
+            Fail::Stale => "stale query".into(),
+            Fail::Other(m) => m,
+        })?;
+        out.extend(d["tracks"].as_array().into_iter().flatten().filter(|t| t["__typename"].as_str() == Some("Track")).map(|t| track_obj(t, "", None)));
+    }
+    Ok(out)
 }
 
 fn track_uris(r: &Req) -> Vec<String> {
@@ -813,6 +940,8 @@ pub fn call(token: &str, method: &str, url: &str, body: Option<&str>) -> Option<
         ("PUT", ["me", "library"]) => save(token, r.list("uris"), true),
         ("DELETE", ["me", "library"]) => save(token, r.list("uris"), false),
         ("GET", ["me", "playlists"]) => my_playlists(token, &r),
+        ("POST", ["me", "playlists"] | ["users", _, "playlists"]) => create_playlist(token, &body),
+        ("PUT", ["playlists", id]) if body.is_object() && (body.get("name").is_some() || body.get("description").is_some()) => update_playlist(token, id, &body),
         ("GET", ["me", "albums"]) => my_albums(token, &r),
         ("GET", ["me", "following"]) if r.get("type") == "artist" => following(token, &r),
         ("GET", ["me", "top", "tracks"]) => top_tracks(token, &r),
@@ -922,6 +1051,28 @@ mod live {
         let c = get(&format!("/me/library/contains?uris={}%2Cspotify%3Atrack%3A4uLU6hMCjMI75M1A2tKUQC", encode(t["uri"].as_str().unwrap())));
         assert_eq!(c, json!([true, false]));
         assert!(call(&token(), "GET", "https://api.spotify.com/v1/me/player", None).is_none());
+    }
+
+    /// Makes a throwaway playlist, renames it, and removes it from the library again.
+    #[test]
+    #[ignore]
+    fn playlist_lifecycle() {
+        let t = token();
+        let made = call(&t, "POST", &format!("{WEB_API}/me/playlists"), Some(r#"{"name":"Afterglow test","description":"","public":false}"#)).unwrap();
+        assert_eq!(made.status, 200, "{}", made.body);
+        let id = made.body["id"].as_str().unwrap().to_string();
+        let uri = format!("spotify:playlist:{id}");
+        println!("made {uri}");
+        let r = call(&t, "PUT", &format!("{WEB_API}/playlists/{id}"), Some(r#"{"name":"Afterglow test 2","description":"hi"}"#)).unwrap();
+        assert_eq!(r.status, 200, "{}", r.body);
+        std::thread::sleep(Duration::from_secs(2));
+        let p = get(&format!("/playlists/{id}"));
+        println!("renamed: {} / {}", p["name"], p["description"]);
+        assert_eq!(get(&format!("/me/library/contains?uris={}", encode(&uri))), json!([true]));
+        let r = call(&t, "DELETE", &format!("{WEB_API}/me/library?uris={}", encode(&uri)), None).unwrap();
+        assert_eq!(r.status, 200, "{}", r.body);
+        assert_eq!(get(&format!("/me/library/contains?uris={}", encode(&uri))), json!([false]));
+        println!("removed again");
     }
 
     #[test]

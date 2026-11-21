@@ -30,6 +30,7 @@ use tauri::{AppHandle, Emitter, Manager, RunEvent, WindowEvent};
 #[cfg(local_extras)]
 mod local;
 mod pathfinder;
+mod connect;
 
 const LR_CLIENT: &str = "65b708073fc0480ea92a077233ca87bd";
 const LR_PORT: u16 = 8898;
@@ -1189,13 +1190,14 @@ async fn spotify(app: AppHandle, method: String, url: String, body: Option<Strin
     }
     tauri::async_runtime::spawn_blocking(move || {
         // Spotify's own client IDs share one tiny Web API quota between all their users, so
-        // those logins read through the web player's API; the rest still goes to the Web API.
+        // those logins read through the web player's API and control playback through Spotify
+        // Connect; the rest still goes to the Web API.
         let own_client = is_web(&app) || is_browser(&app);
         let mut force = false;
         for _ in 0..2 {
             let (token, _) = ensure_token(&app, force)?;
             if own_client {
-                if let Some(r) = pathfinder::call(&token, &method, &url, body.as_deref()) {
+                if let Some(r) = connect::call(&token, &method, &url, body.as_deref()).or_else(|| pathfinder::call(&token, &method, &url, body.as_deref())) {
                     if r.status == 401 && !force {
                         force = true;
                         continue;
@@ -1258,6 +1260,7 @@ async fn logout(app: AppHandle) {
     }
     save_cfg(&cfg);
     pathfinder::forget();
+    connect::forget();
 }
 
 fn plugins_dir() -> PathBuf {
