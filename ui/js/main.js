@@ -524,6 +524,13 @@ bus.on('pairing', (need) => {
 bus.on('engine-hint', (h) => {
   if (h === 'soloist-key') toast('Add your Soloist API key in Settings to play music on Linux', 6000);
 });
+// Spotify's daily quota block: say it once, clearly, instead of leaving pages empty
+let quotaShown = false;
+bus.on('quota', (msg) => {
+  if (quotaShown) return;
+  quotaShown = true;
+  toast(msg, 12000);
+});
 let welcomed = false;
 bus.on('logged-out', async (why) => {
   if (welcomed) return;

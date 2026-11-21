@@ -361,8 +361,8 @@ function remoteBackend() {
     } catch {}
   };
   const after = (p) => Promise.resolve(p).finally(() => setTimeout(poll, 400));
-  timer = setInterval(() => !document.hidden && poll(), 3000);
-  const fast = setInterval(() => !document.hidden && document.querySelector('#np.open') && poll(), 2000);
+  timer = setInterval(() => !document.hidden && poll(), 5000);
+  const fast = setInterval(() => !document.hidden && document.querySelector('#np.open') && poll(), 3000);
   bus.on('resync', poll);
   poll();
   return {

@@ -44,9 +44,20 @@ export async function api(path, { method = 'GET', body, query, background = fals
   return request(url, method, body, background);
 }
 
+function quotaError(ms) {
+  const h = Math.ceil(ms / 3600000);
+  const when = ms > 3600000 ? `${h} hour${h > 1 ? 's' : ''}` : `${Math.ceil(ms / 60000)} minutes`;
+  const e = new Error(`Spotify paused this login for about ${when} because it got too many requests. Log out in Settings and sign in again to get going right away.`);
+  e.status = 429;
+  e.quota = true;
+  bus.emit('quota', e.message);
+  return e;
+}
+
 async function request(url, method, body, background) {
   for (let attempt = 0; attempt < 4; attempt++) {
     const wait = coolUntil - Date.now();
+    if (wait > 60000) throw quotaError(wait);
     if (wait > 0) {
       if (background) throw new Error('rate limited');
       await sleep(wait);
@@ -64,7 +75,10 @@ async function request(url, method, body, background) {
       throw new Error(msg);
     }
     if (res.status === 429) {
-      coolUntil = Math.max(coolUntil, Date.now() + Math.min(30, res.retry_after || 2) * 1000);
+      const secs = res.retry_after || 2;
+      coolUntil = Math.max(coolUntil, Date.now() + secs * 1000);
+      // a long block (Spotify's daily quota, up to 24 h): stop asking and say so right away
+      if (secs > 60) throw quotaError(secs * 1000);
       if (background) throw new Error('rate limited');
       continue;
     }
