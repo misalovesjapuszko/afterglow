@@ -29,6 +29,7 @@ use tauri::{AppHandle, Emitter, Manager, RunEvent, WindowEvent};
 // Optional local-only extras (not in the public repo); build.rs sets the cfg when present.
 #[cfg(local_extras)]
 mod local;
+mod pathfinder;
 
 const LR_CLIENT: &str = "65b708073fc0480ea92a077233ca87bd";
 const LR_PORT: u16 = 8898;
@@ -415,7 +416,7 @@ fn get_config(app: AppHandle) -> Value {
         o.insert("has_soloist_key".into(), json!(has_key));
         o.remove("web_token");
         o.remove("web_expires_at");
-        o.insert("logged_in".into(), json!(cfg["refresh_token"].as_str().is_some() || cfg["auth"].as_str() == Some("web")));
+        o.insert("logged_in".into(), json!(cfg["refresh_token"].as_str().is_some() || matches!(cfg["auth"].as_str(), Some("web" | "browser"))));
         o.insert("config_dir".into(), json!(config_dir().to_string_lossy()));
     }
     out
@@ -522,6 +523,50 @@ async fn login_extra(app: AppHandle) -> Result<(), String> {
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+/// "Sign in with browser": the Spotify login opens in the user's own browser (already signed
+/// in there, usually) with Spotify's desktop-app client ID, like librespot-based players do.
+/// The same token plays music (librespot) and reads the library (pathfinder).
+#[tauri::command]
+async fn browser_login(app: AppHandle) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let v = pkce_login(&app, LR_CLIENT, LR_PORT, SCOPES);
+        back_to_app(&app);
+        let v = v?;
+        store_tokens(&app, &v, "lr_");
+        let s = app.state::<AppState>();
+        let mut cfg = s.cfg.lock().unwrap();
+        cfg["auth"] = json!("browser");
+        save_cfg(&cfg);
+        Ok(())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+fn is_browser(app: &AppHandle) -> bool {
+    app.state::<AppState>().cfg.lock().unwrap()["auth"].as_str() == Some("browser")
+}
+
+/// The browser login's token, refreshed when it is about to run out (or when [force]).
+fn browser_token(app: &AppHandle, force: bool) -> Result<(String, u64), String> {
+    if !force {
+        if let Ok(t) = lr_token(app) {
+            let exp = app.state::<AppState>().cfg.lock().unwrap()["lr_expires_at"].as_u64().unwrap_or(0);
+            return Ok((t, exp));
+        }
+    }
+    let refresh = app.state::<AppState>().cfg.lock().unwrap()["lr_refresh_token"].as_str().unwrap_or("").to_string();
+    if refresh.is_empty() {
+        return Err("LOGIN".into());
+    }
+    let v = token_request(&[("grant_type", "refresh_token"), ("refresh_token", &refresh), ("client_id", LR_CLIENT)])
+        .map_err(|e| if e.contains("invalid_grant") || e.contains("revoked") { "LOGIN".to_string() } else { e })?;
+    store_tokens(app, &v, "lr_");
+    let s = app.state::<AppState>();
+    let cfg = s.cfg.lock().unwrap();
+    Ok((cfg["lr_access_token"].as_str().unwrap_or("").to_string(), cfg["lr_expires_at"].as_u64().unwrap_or(0)))
 }
 
 fn lr_token(app: &AppHandle) -> Result<String, String> {
@@ -1092,6 +1137,9 @@ fn ensure_token(app: &AppHandle, force: bool) -> Result<(String, u64), String> {
     if is_web(app) {
         return web_token(app, force);
     }
+    if is_browser(app) {
+        return browser_token(app, force).map_err(|e| if e == "LR_LOGIN" { "LOGIN".to_string() } else { e });
+    }
     ensure_app_token(app, force)
 }
 
@@ -1140,9 +1188,21 @@ async fn spotify(app: AppHandle, method: String, url: String, body: Option<Strin
         return Err("bad url".into());
     }
     tauri::async_runtime::spawn_blocking(move || {
+        // Spotify's own client IDs share one tiny Web API quota between all their users, so
+        // those logins read through the web player's API; the rest still goes to the Web API.
+        let own_client = is_web(&app) || is_browser(&app);
         let mut force = false;
         for _ in 0..2 {
             let (token, _) = ensure_token(&app, force)?;
+            if own_client {
+                if let Some(r) = pathfinder::call(&token, &method, &url, body.as_deref()) {
+                    if r.status == 401 && !force {
+                        force = true;
+                        continue;
+                    }
+                    return Ok(json!({"status": r.status, "text": if r.body.is_null() { String::new() } else { r.body.to_string() }, "retry_after": r.retry_after}));
+                }
+            }
             let auth = format!("Bearer {token}");
             let a = agent();
             let res = match (method.as_str(), &body) {
@@ -1197,6 +1257,7 @@ async fn logout(app: AppHandle) {
         o.remove("scope");
     }
     save_cfg(&cfg);
+    pathfinder::forget();
 }
 
 fn plugins_dir() -> PathBuf {
@@ -1410,6 +1471,7 @@ fn handlers() -> Handler {
         login,
         login_extra,
         web_login,
+        browser_login,
         playlist_full,
         spotify_lyrics,
         viz_start,
@@ -1446,6 +1508,7 @@ pub fn run() {
             tray: Mutex::new(false),
         })
         .setup(|app| {
+            pathfinder::init(data_dir());
             // Flatpak's runtime has no tray library, and loading a missing one aborts
             #[cfg(desktop)]
             if std::env::var_os("FLATPAK_ID").is_none() {

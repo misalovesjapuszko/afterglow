@@ -32,6 +32,7 @@ dependencies = [
  "librespot-metadata",
  "mpris-server",
  "open",
+ "regex",
  "serde_json",
  "sha2",
  "tauri",

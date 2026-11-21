@@ -53,8 +53,10 @@ Every Linux file comes in `x64` and `arm64`.
 
 You need **Spotify Premium**.
 
-1. Open Afterglow and press **Sign in with Spotify**.
-2. Log in on Spotify's page. That's it.
+1. Open Afterglow and press **Sign in with browser** (on iPhone and iPad: **Sign in with Spotify**).
+2. Your browser opens Spotify's page. If you're already logged in to Spotify there, just press Agree. That's it.
+
+Prefer not to use your browser? **Sign in here instead** opens Spotify's login inside Afterglow.
 
 If sign-in ever stops working, Afterglow can use your own free Spotify developer app instead. The app walks you through it step by step (about 3 minutes).
 

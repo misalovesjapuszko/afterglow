@@ -47,7 +47,7 @@ const LOGIN_ERRORS = [
   [/CANCELLED/, 'The sign-in window was closed. Press the button to try again.'],
   [/timed out/i, 'The login took too long. Press Connect and finish in the Spotify page within 5 minutes.'],
   [/access_denied/i, 'Spotify said no (you pressed Cancel, or this Spotify account is not allowed in your developer app yet).'],
-  [/busy/i, 'Another app is using port 8899. Close other Afterglow windows and try again.'],
+  [/busy/i, 'Another app is using Afterglow\'s login port. Close other Afterglow windows and try again.'],
   [/state mismatch/i, 'That login link was old. Press Connect again.'],
 ];
 const explain = (e) => LOGIN_ERRORS.find(([re]) => re.test(String(e)))?.[1] || String(e);
@@ -81,7 +81,8 @@ async function welcome(cfg, error = '') {
         <div><span>${icons.plugin}</span>Plugins and themes you can write yourself</div>
       </div>
       <div class="wc-chips"><span>Needs Spotify Premium</span><span>Sign in once, that’s it</span></div>
-      <button class="wc-btn wc-spotify" id="wc-web">${SPOTIFY_LOGO}<span>Sign in with Spotify</span></button>
+      ${os === 'ios' ? '' : `<button class="wc-btn wc-spotify" id="wc-browser">${SPOTIFY_LOGO}<span>Sign in with browser</span></button>`}
+      <button class="wc-btn${os === 'ios' ? ' wc-spotify' : ' wc-second'}" id="wc-web">${os === 'ios' ? SPOTIFY_LOGO : ''}<span>${os === 'ios' ? 'Sign in with Spotify' : 'Sign in here instead'}</span></button>
       <div class="wc-err" id="wc-err">${esc(error)}</div>
       <div class="wc-alt">Sign-in not working? <button class="wc-link" data-next>Use your own Spotify developer app</button> instead. It’s the official way and takes about 3 minutes.</div>`,
     () => `
@@ -187,6 +188,21 @@ async function welcome(cfg, error = '') {
       };
       input.onkeydown = (e) => e.key === 'Enter' && validId(input.value) && go(3);
     }
+    const viaBrowser = $('#wc-browser');
+    if (viaBrowser)
+      viaBrowser.onclick = async () => {
+        viaBrowser.disabled = true;
+        viaBrowser.querySelector('span').textContent = 'Finish signing in in your browser…';
+        $('#wc-err').textContent = '';
+        try {
+          await invoke('browser_login');
+          location.reload();
+        } catch (e) {
+          viaBrowser.disabled = false;
+          viaBrowser.querySelector('span').textContent = 'Sign in with browser';
+          $('#wc-err').textContent = explain(e);
+        }
+      };
     const web = $('#wc-web');
     if (web)
       web.onclick = async () => {
@@ -198,7 +214,7 @@ async function welcome(cfg, error = '') {
           location.reload();
         } catch (e) {
           web.disabled = false;
-          web.querySelector('span').textContent = 'Sign in with Spotify';
+          web.querySelector('span').textContent = os === 'ios' ? 'Sign in with Spotify' : 'Sign in here instead';
           $('#wc-err').textContent = explain(e);
         }
       };
@@ -221,7 +237,7 @@ async function welcome(cfg, error = '') {
   }
 
   // returning user whose login expired: straight to the Connect step
-  state.step = error && validId(state.id) && cfg.auth !== 'web' ? 3 : 0;
+  state.step = error && validId(state.id) && cfg.auth !== 'web' && cfg.auth !== 'browser' ? 3 : 0;
   render();
 }
 
