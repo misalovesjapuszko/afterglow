@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Afterglow</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="ambient"></div>
+
+  <aside id="sidebar">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <span>Afterglow</span>
+    </div>
+    <button class="nav-item side-search" data-route="search"><i data-icon="search"></i><span>Search</span><kbd>Ctrl K</kbd></button>
+    <nav class="nav">
+      <button class="nav-item" data-route="home"><i data-icon="home"></i><span>Home</span></button>
+      <button class="nav-item" data-route="liked"><i data-icon="heartFill"></i><span>Liked Songs</span></button>
+      <button class="nav-item m-only" data-route="library"><i data-icon="music"></i><span>Library</span></button>
+    </nav>
+    <div class="nav-section" id="plugin-nav-section" hidden>
+      <div class="nav-title">Plugins</div>
+      <div id="plugin-nav"></div>
+    </div>
+    <div class="nav-section grow">
+      <div class="nav-title">Playlists</div>
+      <div id="playlist-nav" class="playlist-nav"></div>
+    </div>
+    <button class="nav-item settings-btn" data-route="settings"><i data-icon="settings"></i><span>Settings</span></button>
+  </aside>
+
+  <header id="player">
+    <div class="pl-controls">
+      <button class="icon-btn" id="pl-shuffle" title="Shuffle"><i data-icon="shuffle"></i></button>
+      <button class="icon-btn mid" id="pl-prev" title="Previous"><i data-icon="prev"></i></button>
+      <button class="play-btn" id="pl-play" title="Play"><i data-icon="play"></i></button>
+      <button class="icon-btn mid" id="pl-next" title="Next"><i data-icon="next"></i></button>
+      <button class="icon-btn" id="pl-repeat" title="Repeat"><i data-icon="repeat"></i></button>
+    </div>
+    <div class="lcd pl-left">
+      <button class="pl-art" id="pl-art" title="Now Playing"><img alt=""><span class="pl-art-hover"><i data-icon="expand"></i></span></button>
+      <div class="lcd-body">
+        <div class="lcd-text pl-meta">
+          <div class="pl-title" id="pl-title">Not playing</div>
+          <div class="pl-artist" id="pl-artist"></div>
+        </div>
+        <div class="pl-progress">
+          <span id="pl-pos">0:00</span>
+          <div class="slider" id="pl-seek"><div class="slider-fill"></div><div class="slider-knob"></div></div>
+          <span id="pl-dur">0:00</span>
+        </div>
+      </div>
+      <button class="icon-btn" id="pl-like" title="Like"><i data-icon="heart"></i></button>
+    </div>
+    <div class="pl-right">
+      <div id="plugin-player-buttons"></div>
+      <button class="icon-btn" id="pl-mute" title="Volume"><i data-icon="volume"></i></button>
+      <div class="slider volume" id="pl-volume"><div class="slider-fill"></div><div class="slider-knob"></div></div>
+      <span class="slider-pct" id="pl-vol-pct"></span>
+      <button class="icon-btn" id="pl-lyrics" title="Lyrics (L)"><i data-icon="lyrics"></i></button>
+      <button class="icon-btn" id="pl-queue" title="Up Next"><i data-icon="queue"></i></button>
+    </div>
+  </header>
+
+  <main id="main">
+    <header id="topbar">
+      <button class="round-btn" id="back-btn" title="Back"><i data-icon="chevronLeft"></i></button>
+      <div id="topbar-title"></div>
+    </header>
+    <div id="view"></div>
+  </main>
+
+  <aside id="queue-panel" hidden>
+    <div class="qp-head"><h3>Up Next</h3><button class="icon-btn" id="qp-close"><i data-icon="close"></i></button></div>
+    <div id="queue-list"></div>
+  </aside>
+
+  <section id="np" aria-hidden="true">
+    <canvas class="np-bg" id="np-canvas"></canvas>
+    <div class="np-shade"></div>
+    <div class="np-grain"></div>
+    <button class="np-close" id="np-close" title="Close (Esc)"><i data-icon="chevronDown"></i></button>
+    <div class="np-layout">
+      <div class="np-left">
+        <div class="np-art" id="np-art">
+          <canvas class="np-viz" id="np-viz"></canvas>
+          <img class="np-cover" id="np-cover" alt="">
+        </div>
+        <div class="np-meta">
+          <div class="np-info">
+            <div class="np-title" id="np-title"></div>
+            <div class="np-artist" id="np-artist"></div>
+          </div>
+          <button class="np-round" id="np-like" title="Like"><i data-icon="heart"></i></button>
+          <button class="np-round" id="np-more" title="More"><i data-icon="more"></i></button>
+        </div>
+        <div class="np-progress">
+          <div class="slider light" id="np-seek"><div class="slider-fill"></div><div class="slider-knob"></div></div>
+          <div class="np-times"><span id="np-pos">0:00</span><span class="np-src" id="np-src"></span><span id="np-dur">0:00</span></div>
+        </div>
+        <div class="np-controls">
+          <button class="icon-btn light" id="np-shuffle" title="Shuffle"><i data-icon="shuffle"></i></button>
+          <button class="icon-btn light big" id="np-prev" title="Previous"><i data-icon="prev"></i></button>
+          <button class="icon-btn light huge" id="np-play" title="Play"><i data-icon="play"></i></button>
+          <button class="icon-btn light big" id="np-next" title="Next"><i data-icon="next"></i></button>
+          <button class="icon-btn light" id="np-repeat" title="Repeat"><i data-icon="repeat"></i></button>
+        </div>
+        <div class="np-volume">
+          <button class="icon-btn light small" id="np-vol-down" title="Quieter"><i data-icon="volumeLow"></i></button>
+          <div class="slider light" id="np-volume"><div class="slider-fill"></div><div class="slider-knob"></div></div>
+          <button class="icon-btn light small" id="np-vol-up" title="Louder"><i data-icon="volume"></i></button>
+        </div>
+      </div>
+      <div class="np-right">
+        <div class="lyrics" id="lyrics"><div class="lyrics-inner" id="lyrics-inner"></div></div>
+        <div class="np-queue" id="np-queue" hidden></div>
+      </div>
+    </div>
+    <div class="np-tools">
+      <button class="np-tool" id="np-sync" title="Lyrics timing"><i data-icon="timer"></i></button>
+      <button class="np-tool" id="np-style" title="Lyrics &amp; look"><i data-icon="sliders"></i><span id="np-style-label" hidden></span></button>
+      <span class="np-tools-sep"></span>
+      <button class="np-tool on" id="np-tab-lyrics" title="Lyrics"><i data-icon="lyrics"></i></button>
+      <button class="np-tool" id="np-tab-queue" title="Up Next"><i data-icon="queue"></i></button>
+    </div>
+    <div class="np-pop" id="np-sync-pop" hidden>
+      <div class="np-pop-title">Lyrics timing</div>
+      <div class="np-pop-desc">If the words show up late, move them earlier.</div>
+      <div class="sync-row">
+        <button class="sync-btn" data-d="-100" title="Later">−0.1s</button>
+        <div class="sync-val" id="sync-val">0.0s</div>
+        <button class="sync-btn" data-d="100" title="Earlier">+0.1s</button>
+      </div>
+      <div class="sync-row small">
+        <button class="sync-btn" data-d="-500">−0.5s</button>
+        <button class="sync-btn reset" data-d="0">Reset</button>
+        <button class="sync-btn" data-d="500">+0.5s</button>
+      </div>
+      <label class="sync-scope"><input type="checkbox" id="sync-all"> Apply to every song</label>
+    </div>
+  </section>
+
+  <div id="pairing" hidden></div>
+  <div id="toasts"></div>
+  <div id="menu" hidden></div>
+  <div id="welcome" hidden></div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

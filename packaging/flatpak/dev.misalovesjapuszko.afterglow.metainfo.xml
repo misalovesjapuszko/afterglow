@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>dev.misalovesjapuszko.afterglow</id>
+  <name>Afterglow</name>
+  <summary>Beautiful Spotify player with live, word-by-word lyrics</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>LicenseRef-proprietary=https://github.com/misalovesjapuszko/afterglow/blob/main/LICENSE</project_license>
+  <developer id="dev.misalovesjapuszko"><name>Misalovesjapuszko</name></developer>
+  <description>
+    <p>An unofficial Spotify client with Apple Music style synced lyrics, album-art colors, liquid glass design, plugins and themes. Needs Spotify Premium.</p>
+  </description>
+  <launchable type="desktop-id">dev.misalovesjapuszko.afterglow.desktop</launchable>
+  <content_rating type="oars-1.1"/>
+  <releases><release version="1.0.0" date="2026-11-20"/></releases>
+</component>

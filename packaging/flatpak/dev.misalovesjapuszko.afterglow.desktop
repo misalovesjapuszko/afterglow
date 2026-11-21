@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Afterglow
+GenericName=Music Player
+Comment=Beautiful Spotify player with live lyrics
+Exec=afterglow
+Icon=dev.misalovesjapuszko.afterglow
+Terminal=false
+Categories=AudioVideo;Audio;Player;
+StartupWMClass=dev.misalovesjapuszko.afterglow

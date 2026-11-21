@@ -1,0 +1,12 @@
+[package]
+name = "tauri-plugin-glassbar"
+version = "0.1.0"
+description = "Native iOS Liquid Glass tab bar and mini player for Afterglow"
+edition = "2021"
+links = "tauri-plugin-glassbar"
+
+[dependencies]
+tauri = { version = "2" }
+
+[build-dependencies]
+tauri-plugin = { version = "2", features = ["build"] }

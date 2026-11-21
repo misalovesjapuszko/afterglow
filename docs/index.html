@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Afterglow</title>
+<meta name="description" content="Afterglow is a Spotify player with live, word-by-word lyrics, album-art colors and liquid glass. For Windows, Linux, iPhone and iPad.">
+<meta property="og:title" content="Afterglow">
+<meta property="og:description" content="Your music, in afterglow. Live, word-by-word lyrics for Spotify.">
+<meta property="og:image" content="screenshots/lyrics.jpg">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+/* Design system: DESIGN-apple.md, dark variant. One accent (the app's red), near-black tiles,
+   no gradients, no shadows except the single product shadow under app screenshots. */
+:root {
+  --primary: #fa2d48;
+  --primary-focus: #ff375f;
+  --primary-on-dark: #ff5c71;
+  --on-primary: #ffffff;
+  --body: #f5f5f7;
+  --body-muted: #cccccc;
+  --ink-muted-48: #86868b;
+  --hairline: rgba(255, 255, 255, 0.12);
+  --surface-black: #000000;
+  --tile-1: #272729;
+  --tile-2: #2a2a2c;
+  --tile-3: #252527;
+  --ink: #1d1d1f;
+  --footer: #161617;
+  --product-shadow: rgba(0, 0, 0, 0.22) 3px 5px 30px 0;
+
+  --font-display: "SF Pro Display", system-ui, -apple-system, BlinkMacSystemFont, Inter, sans-serif;
+  --font-text: "SF Pro Text", system-ui, -apple-system, BlinkMacSystemFont, Inter, sans-serif;
+
+  --r-sm: 8px;
+  --r-md: 11px;
+  --r-lg: 18px;
+  --pill: 9999px;
+
+  --s-xs: 8px;
+  --s-sm: 12px;
+  --s-md: 17px;
+  --s-lg: 24px;
+  --s-xl: 32px;
+  --s-xxl: 48px;
+  --s-section: 80px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 60px; }
+body {
+  margin: 0; background: var(--surface-black); color: var(--body);
+  font: 400 17px/1.47 var(--font-text); letter-spacing: -0.374px;
+  font-feature-settings: "ss03"; -webkit-font-smoothing: antialiased; overflow-x: hidden;
+}
+a { color: inherit; text-decoration: none; }
+img { display: block; max-width: 100%; height: auto; }
+
+/* global nav: 44px, true black, 12px links */
+.gnav { background: var(--surface-black); height: 44px; }
+.gnav-in { max-width: 1024px; height: 100%; margin: 0 auto; padding: 0 22px; display: flex; align-items: center; justify-content: space-between; }
+.gnav a { font: 400 12px/1 var(--font-text); letter-spacing: -0.12px; color: rgba(255, 255, 255, 0.8); padding: 0 8px; }
+.gnav a:active { opacity: 0.6; }
+.gnav .logo { padding: 0; display: flex; align-items: center; }
+.gnav .logo img { width: 20px; height: 20px; border-radius: 5px; }
+@media (max-width: 833px) { .gnav .hide-sm { display: none; } }
+
+/* frosted sub-nav: sticky 52px */
+.subnav { position: sticky; top: 0; z-index: 20; height: 52px; background: rgba(22, 22, 23, 0.8);
+  -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); border-bottom: 1px solid var(--hairline); }
+.subnav-in { max-width: 1024px; height: 100%; margin: 0 auto; padding: 0 22px; display: flex; align-items: center; gap: var(--s-lg); }
+.subnav .title { font: 600 21px/1.19 var(--font-display); letter-spacing: 0.231px; margin-right: auto; }
+.subnav a.link { font: 400 12px/1 var(--font-text); letter-spacing: -0.12px; color: var(--body-muted); }
+.subnav a.link:active { opacity: 0.6; }
+@media (max-width: 734px) { .subnav a.link { display: none; } }
+
+/* buttons */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: var(--pill);
+  font: 400 17px/1.17 var(--font-text); letter-spacing: -0.374px; padding: 11px 22px; transition: transform 0.15s; cursor: pointer; }
+.btn:active { transform: scale(0.95); }
+.btn:focus-visible { outline: 2px solid var(--primary-focus); outline-offset: 2px; }
+.btn-primary { background: var(--primary); color: var(--on-primary); }
+.btn-ghost { border: 1px solid var(--primary-on-dark); color: var(--primary-on-dark); padding: 10px 21px; }
+.btn-small { font-size: 12px; letter-spacing: -0.12px; padding: 4px 11px; }
+.link-arrow { color: var(--primary-on-dark); }
+.link-arrow::after { content: " \203A"; }
+.link-arrow:active { opacity: 0.6; }
+
+/* full-bleed tiles */
+.tile { padding: var(--s-section) 22px 0; text-align: center; overflow: hidden; }
+.tile.pad-b { padding-bottom: var(--s-section); }
+.t-black { background: var(--surface-black); }
+.t-1 { background: var(--tile-1); }
+.t-2 { background: var(--tile-2); }
+.t-3 { background: var(--tile-3); }
+.hero-name { font: 600 56px/1.07 var(--font-display); letter-spacing: -0.28px; margin: 0; }
+.display { font: 600 40px/1.1 var(--font-display); letter-spacing: -0.01em; margin: 0; }
+.lead { font: 400 28px/1.14 var(--font-display); letter-spacing: 0.196px; color: var(--body); margin: 6px 0 0; }
+.lead.muted { color: var(--body-muted); }
+.tagline { font: 600 21px/1.19 var(--font-display); letter-spacing: 0.231px; margin: 0 0 6px; color: var(--primary-on-dark); }
+.body-copy { max-width: 640px; margin: var(--s-md) auto 0; color: var(--body-muted); }
+.ctas { display: flex; justify-content: center; flex-wrap: wrap; gap: 14px; margin-top: var(--s-lg); }
+.fine { font: 400 12px/1.33 var(--font-text); letter-spacing: -0.12px; color: var(--ink-muted-48); margin: var(--s-md) 0 0; }
+
+/* product imagery: the only shadow in the system */
+.shot { margin: var(--s-xxl) auto 0; max-width: 1180px; }
+.shot img { width: 100%; box-shadow: var(--product-shadow); }
+.shot.narrow { max-width: 300px; }
+
+.duo { display: grid; grid-template-columns: 1fr 1fr; }
+.duo .tile { padding-bottom: var(--s-xxl); }
+.duo .shot { margin-top: var(--s-xl); max-width: 560px; }
+.duo .shot.narrow { max-width: 260px; }
+@media (max-width: 833px) { .duo { grid-template-columns: 1fr; } }
+
+.phones { display: flex; justify-content: center; align-items: flex-end; gap: clamp(12px, 3vw, 40px); margin: var(--s-xxl) auto 0; max-width: 980px; }
+.phone { width: min(260px, 31%); border-radius: 36px; padding: 6px; background: #0a0a0b; box-shadow: var(--product-shadow), inset 0 0 0 1px rgba(255, 255, 255, 0.14); }
+.phone img { border-radius: 30px; }
+.phone.mid { transform: translateY(-28px); }
+@media (max-width: 640px) { .phone { border-radius: 22px; padding: 4px; } .phone img { border-radius: 18px; } .phone.mid { transform: translateY(-14px); } }
+
+/* utility cards */
+.grid { max-width: 1024px; margin: var(--s-xxl) auto 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; text-align: left; }
+@media (max-width: 1068px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+.card { background: var(--ink); border: 1px solid var(--hairline); border-radius: var(--r-lg); padding: var(--s-lg); }
+.card .ic { width: 28px; height: 28px; color: var(--primary-on-dark); margin-bottom: var(--s-sm); }
+.card h3 { font: 600 17px/1.24 var(--font-text); letter-spacing: -0.374px; margin: 0 0 4px; }
+.card p { margin: 0; color: var(--body-muted); font-size: 14px; line-height: 1.43; letter-spacing: -0.224px; }
+
+/* download cards */
+.dl { max-width: 1024px; margin: var(--s-xxl) auto 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; text-align: left; }
+@media (max-width: 833px) { .dl { grid-template-columns: 1fr; } }
+.dl .card.mine { border-color: var(--primary); }
+.dl h3 { font: 600 21px/1.19 var(--font-display); letter-spacing: 0.231px; margin: 0; display: flex; align-items: center; gap: 10px; }
+.dl h3 svg { width: 22px; height: 22px; }
+.dl .req { font-size: 14px; letter-spacing: -0.224px; color: var(--ink-muted-48); margin: 4px 0 var(--s-sm); }
+.dl ul { list-style: none; margin: 0; padding: 0; }
+.dl li a { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font: 400 17px/2.41 var(--font-text); letter-spacing: 0; color: var(--primary-on-dark); border-top: 1px solid var(--hairline); cursor: pointer; }
+.dl li:first-child a { border-top: 0; }
+.dl li a span { color: var(--ink-muted-48); font-size: 12px; }
+.dl li a:active { opacity: 0.6; }
+.dl .note { font-size: 14px; letter-spacing: -0.224px; color: var(--ink-muted-48); margin: var(--s-sm) 0 0; }
+
+/* steps */
+.steps { max-width: 1024px; margin: var(--s-xxl) auto 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; counter-reset: s; text-align: left; }
+@media (max-width: 833px) { .steps { grid-template-columns: 1fr; } }
+.steps .card { counter-increment: s; }
+.steps .card::before { content: counter(s); display: block; font: 600 40px/1.1 var(--font-display); color: var(--primary-on-dark); margin-bottom: var(--s-sm); }
+
+/* footer */
+footer { background: var(--footer); color: var(--ink-muted-48); padding: 64px 22px; }
+.foot-in { max-width: 1024px; margin: 0 auto; }
+.foot-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 220px)); gap: 20px; padding-bottom: var(--s-lg); border-bottom: 1px solid var(--hairline); }
+@media (max-width: 640px) { .foot-cols { grid-template-columns: 1fr 1fr; } }
+.foot-cols h4 { font: 600 14px/1.29 var(--font-text); letter-spacing: -0.224px; color: var(--body); margin: 0 0 4px; }
+.foot-cols a { display: block; font: 400 14px/2.2 var(--font-text); letter-spacing: -0.224px; color: var(--body-muted); }
+.legal { font: 400 12px/1.6 var(--font-text); letter-spacing: -0.12px; margin: var(--s-lg) 0 0; }
+.legal a { color: inherit; text-decoration: underline; }
+
+/* responsive type */
+@media (max-width: 1068px) { .hero-name { font-size: 48px; } }
+@media (max-width: 734px) {
+  .hero-name { font-size: 40px; } .display { font-size: 32px; } .lead { font-size: 21px; }
+  .tile { padding-top: var(--s-xxl); } .tile.pad-b { padding-bottom: var(--s-xxl); }
+}
+@media (max-width: 419px) { .hero-name { font-size: 34px; } .display { font-size: 28px; } }
+
+/* quiet entrance */
+.reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.9s cubic-bezier(0.22, 1, 0.36, 1), transform 0.9s cubic-bezier(0.22, 1, 0.36, 1); }
+.reveal.in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } }
+</style>
+</head>
+<body>
+
+<nav class="gnav" aria-label="Global">
+  <div class="gnav-in">
+    <a class="logo" href="#" aria-label="Afterglow"><img src="icon.png" alt=""></a>
+    <a class="hide-sm" href="#lyrics">Lyrics</a>
+    <a class="hide-sm" href="#iphone">iPhone</a>
+    <a class="hide-sm" href="#features">Features</a>
+    <a class="hide-sm" href="#download">Download</a>
+    <a class="hide-sm" href="https://github.com/misalovesjapuszko/afterglow">GitHub</a>
+    <a href="https://discord.gg/SPbcMXNERD">Discord</a>
+  </div>
+</nav>
+
+<div class="subnav">
+  <div class="subnav-in">
+    <span class="title">Afterglow</span>
+    <a class="link" href="#features">Overview</a>
+    <a class="link" href="#setup">Setup</a>
+    <a class="link" href="https://github.com/misalovesjapuszko/afterglow/blob/main/PLUGINS.md">Plugins</a>
+    <a class="btn btn-primary btn-small" href="#download">Download</a>
+  </div>
+</div>
+
+<main>
+  <section class="tile t-black">
+    <h1 class="hero-name reveal">Afterglow</h1>
+    <p class="lead reveal">Your music, in afterglow.</p>
+    <div class="ctas reveal">
+      <a class="btn btn-primary" href="#download" id="hero-dl">Download</a>
+      <a class="btn btn-ghost" href="https://discord.gg/SPbcMXNERD">Join the Discord</a>
+    </div>
+    <p class="fine reveal">Free for Windows, Linux, iPhone and iPad. Needs Spotify Premium.</p>
+    <div class="shot reveal"><img src="screenshots/lyrics.jpg" alt="Afterglow's Now Playing screen with synced lyrics"></div>
+  </section>
+
+  <section class="tile t-1 pad-b" id="lyrics">
+    <p class="tagline reveal">Lyrics</p>
+    <h2 class="display reveal">Every word, right on time.</h2>
+    <p class="lead muted reveal">Spotify’s own synced lyrics light up word by word.</p>
+    <p class="body-copy reveal">Lines drift in on soft springs, the current word fills as it’s sung, and the rest blur gently out of focus. If Spotify has no lyrics for a song, Afterglow finds them on LRCLIB.</p>
+  </section>
+
+  <div class="duo">
+    <section class="tile t-2">
+      <h2 class="display reveal">Album-art colors.</h2>
+      <p class="lead muted reveal">The whole app wears the song.</p>
+      <div class="shot reveal"><img src="screenshots/home.jpg" alt="Afterglow tinted in the colors of the playing album"></div>
+    </section>
+    <section class="tile t-3">
+      <h2 class="display reveal">Liquid glass.</h2>
+      <p class="lead muted reveal">Light, layered and alive.</p>
+      <div class="shot narrow reveal"><img src="screenshots/phone-np.jpg" alt="Now Playing on iPhone"></div>
+    </section>
+  </div>
+
+  <section class="tile t-black pad-b" id="iphone">
+    <p class="tagline reveal">iPhone and iPad</p>
+    <h2 class="display reveal">Made for your pocket.</h2>
+    <p class="lead muted reveal">Native Liquid Glass on iOS 26 and later.</p>
+    <p class="body-copy reveal">On iPhone the tab bar and mini player are real iOS Liquid Glass, drawn by the system. Afterglow is the remote and the lyrics screen; the Spotify app plays the music.</p>
+    <div class="phones reveal">
+      <div class="phone"><img src="screenshots/phone-home.jpg" alt="Home on iPhone"></div>
+      <div class="phone mid"><img src="screenshots/phone-np.jpg" alt="Now Playing on iPhone"></div>
+      <div class="phone"><img src="screenshots/phone-lyrics.jpg" alt="Lyrics on iPhone"></div>
+    </div>
+  </section>
+
+  <section class="tile t-1 pad-b" id="features">
+    <h2 class="display reveal">Everything you play. Nothing in the way.</h2>
+    <div class="grid">
+      <div class="card reveal">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="13" height="13" rx="2.5"/><path d="M7 3h11a3 3 0 0 1 3 3v11"/></svg>
+        <h3>Smooth transitions</h3>
+        <p>Covers turn away like cards when you skip, in the direction you skipped.</p>
+      </div>
+      <div class="card reveal">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        <h3>Your whole library</h3>
+        <p>Home, search, liked songs, playlists, albums, artists and your queue.</p>
+      </div>
+      <div class="card reveal">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6v3a2 2 0 1 0 4 0V3h2v6h-3a2 2 0 1 0 0 4h3v8h-6v-3a2 2 0 1 0-4 0v3H3v-6h3a2 2 0 1 0 0-4H3V3h6Z"/></svg>
+        <h3>Plugins and themes</h3>
+        <p>A few lines of JavaScript or CSS add buttons, pages, lyric sources or a new look.</p>
+      </div>
+      <div class="card reveal">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/></svg>
+        <h3>Tiny and quick</h3>
+        <p>About 8 MB. Uses your system’s web engine instead of shipping a browser.</p>
+      </div>
+      <div class="card reveal">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M7 16h10"/></svg>
+        <h3>Keyboard first</h3>
+        <p>Space to play, arrows to seek, L for lyrics, Ctrl+K to search.</p>
+      </div>
+      <div class="card reveal">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h3l3-8 4 16 3-8h7"/></svg>
+        <h3>Sound ring</h3>
+        <p>On Linux, a ring around the cover moves with the music you hear.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="tile t-2 pad-b" id="setup">
+    <h2 class="display reveal">Playing in a minute.</h2>
+    <p class="lead muted reveal">No accounts to make, nothing to set up.</p>
+    <div class="steps">
+      <div class="card reveal"><h3>Install</h3><p>Download the file for your device and open it.</p></div>
+      <div class="card reveal"><h3>Sign in with Spotify</h3><p>Log in on Spotify’s own page. You need Spotify Premium.</p></div>
+      <div class="card reveal"><h3>Press play</h3><p>Open Now Playing and watch the lyrics glow along.</p></div>
+    </div>
+  </section>
+
+  <section class="tile t-black pad-b" id="download">
+    <h2 class="display reveal">Get Afterglow.</h2>
+    <p class="lead muted reveal" id="ver-note">Free. Always the newest version.</p>
+    <div class="dl">
+      <div class="card reveal" data-os="windows">
+        <h3><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 5.5 10.5 4.4v7.1H3V5.5Zm0 13 7.5 1.1v-7H3v5.9Zm8.4 1.2L21 21v-8.4h-9.6v7.1Zm0-15.4v7.2H21V3l-9.6 1.3Z"/></svg>Windows</h3>
+        <div class="req">Windows 10 or 11</div>
+        <ul>
+          <li><a data-asset="x64-setup.exe">Installer, 64-bit <span>.exe</span></a></li>
+          <li><a data-asset="arm64-setup.exe">Installer, ARM <span>.exe</span></a></li>
+          <li><a data-asset=".msi">For IT and Group Policy <span>.msi</span></a></li>
+        </ul>
+      </div>
+      <div class="card reveal" data-os="linux">
+        <h3><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c-2.2 0-3.6 1.9-3.6 4.6 0 1.5.3 2.4-.7 3.9-1.2 1.7-2.9 4.1-2.9 6.5 0 .6.2 1.1.4 1.5-.7.5-1.6.8-1.6 1.7 0 1.1 1.6 1.2 3.2 1.6 1.2.3 2 .9 3.1.9.9 0 1.5-.5 2.1-.6h1.2c.6.1 1.2.6 2.1.6 1.1 0 1.9-.6 3.1-.9 1.6-.4 3.2-.5 3.2-1.6 0-.9-.9-1.2-1.6-1.7.2-.4.4-.9.4-1.5 0-2.4-1.7-4.8-2.9-6.5-1-1.5-.7-2.4-.7-3.9C15.6 3.9 14.2 2 12 2Z"/></svg>Linux</h3>
+        <div class="req">Any distribution, x64 and ARM</div>
+        <ul>
+          <li><a data-asset="amd64.AppImage">AppImage, any distro <span>.AppImage</span></a></li>
+          <li><a data-asset="amd64.deb">Ubuntu, Debian, Mint <span>.deb</span></a></li>
+          <li><a data-asset="x86_64.rpm">Fedora, openSUSE <span>.rpm</span></a></li>
+          <li><a data-asset="linux_x64.flatpak">Older or unusual distros <span>.flatpak</span></a></li>
+        </ul>
+      </div>
+      <div class="card reveal" data-os="ios">
+        <h3><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.4 12.6c0-2.6 2.1-3.8 2.2-3.9a4.8 4.8 0 0 0-3.8-2c-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.4-.9a5 5 0 0 0-4.2 2.6c-1.8 3.1-.5 7.7 1.3 10.2.8 1.2 1.8 2.6 3.1 2.5 1.3-.1 1.7-.8 3.3-.8 1.5 0 1.9.8 3.3.8 1.4 0 2.2-1.2 3-2.5a10 10 0 0 0 1.4-2.8 4.3 4.3 0 0 1-2.3-4.1ZM13.9 5c.7-.8 1.2-2 1-3.1-1 .1-2.2.7-2.9 1.5-.6.7-1.2 1.9-1 3 1.1.1 2.2-.6 2.9-1.4Z"/></svg>iPhone and iPad</h3>
+        <div class="req">iOS 15 or later</div>
+        <ul>
+          <li><a data-asset="iOS-unsigned.ipa">Afterglow for iOS <span>.ipa</span></a></li>
+        </ul>
+        <p class="note">Install with SideStore, AltStore or Sideloadly.</p>
+      </div>
+    </div>
+    <p class="fine reveal">More files, including ARM Linux and tar.gz, are on the <a class="link-arrow" href="https://github.com/misalovesjapuszko/afterglow/releases/latest">releases page</a></p>
+  </section>
+
+  <section class="tile t-1 pad-b">
+    <p class="tagline reveal">Community</p>
+    <h2 class="display reveal">Come hang out.</h2>
+    <p class="lead muted reveal">Help, themes, ideas, and my other projects.</p>
+    <div class="ctas reveal"><a class="btn btn-primary" href="https://discord.gg/SPbcMXNERD">Join the Discord</a></div>
+  </section>
+</main>
+
+<footer>
+  <div class="foot-in">
+    <div class="foot-cols">
+      <div>
+        <h4>Afterglow</h4>
+        <a href="#features">Features</a>
+        <a href="#iphone">iPhone and iPad</a>
+        <a href="#download">Download</a>
+      </div>
+      <div>
+        <h4>Make it yours</h4>
+        <a href="https://github.com/misalovesjapuszko/afterglow/blob/main/PLUGINS.md">Plugins and themes</a>
+        <a href="https://github.com/misalovesjapuszko/afterglow">Source on GitHub</a>
+        <a href="https://github.com/misalovesjapuszko/afterglow/releases">All releases</a>
+      </div>
+      <div>
+        <h4>Community</h4>
+        <a href="https://discord.gg/SPbcMXNERD">Discord</a>
+        <a href="https://github.com/misalovesjapuszko/afterglow/issues">Report a problem</a>
+      </div>
+    </div>
+    <p class="legal">Afterglow is an unofficial app. It is not made by, endorsed by or affiliated with Spotify. Spotify is a trademark of Spotify AB. Spotify Premium required.<br>Copyright © 2026 Misalovesjapuszko. See the <a href="https://github.com/misalovesjapuszko/afterglow/blob/main/LICENSE">license</a>.</p>
+  </div>
+</footer>
+
+<script>
+const io = new IntersectionObserver((es) => es.forEach((e) => e.isIntersecting && (e.target.classList.add('in'), io.unobserve(e.target))), { threshold: 0.12 });
+document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+
+// Point the links at the newest release's real files, and highlight the visitor's system
+const REPO = 'misalovesjapuszko/afterglow';
+const RELEASES = `https://github.com/${REPO}/releases/latest`;
+const ua = navigator.userAgent;
+const os = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) ? 'ios' : /Windows/.test(ua) ? 'windows' : /Linux|X11/.test(ua) && !/Android/.test(ua) ? 'linux' : null;
+const label = { ios: 'Download for iPhone', windows: 'Download for Windows', linux: 'Download for Linux' }[os];
+if (label) {
+  document.querySelector('#hero-dl').textContent = label;
+  document.querySelector(`.dl .card[data-os="${os}"]`)?.classList.add('mine');
+}
+document.querySelectorAll('[data-asset]').forEach((a) => (a.href = RELEASES));
+fetch(`https://api.github.com/repos/${REPO}/releases/latest`)
+  .then((r) => (r.ok ? r.json() : null))
+  .then((rel) => {
+    if (!rel?.assets) return;
+    document.querySelector('#ver-note').textContent = `Free. Version ${rel.tag_name.replace(/^v/, '')}.`;
+    document.querySelectorAll('[data-asset]').forEach((a) => {
+      const hit = rel.assets.find((x) => x.name.endsWith(a.dataset.asset) || x.name.includes(a.dataset.asset));
+      if (hit) a.href = hit.browser_download_url;
+    });
+    const first = document.querySelector(`.dl .card[data-os="${os}"] [data-asset]`);
+    if (first && first.href !== RELEASES) document.querySelector('#hero-dl').href = first.href;
+  })
+  .catch(() => {});
+</script>
+</body>
+</html>

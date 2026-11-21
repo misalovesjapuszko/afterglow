@@ -1,0 +1,147 @@
+import { invoke, sleep, bus } from './util.js';
+
+let cached = null;
+
+export async function getToken(force = false) {
+  if (!force && cached && cached.expires_at * 1000 - Date.now() > 90000) return cached.token;
+  try {
+    cached = await invoke('get_token', { force });
+  } catch (e) {
+    if (String(e) === 'LOGIN' || String(e) === 'SCOPES') bus.emit('logged-out', String(e));
+    throw new Error(String(e));
+  }
+  return cached.token;
+}
+
+export async function api(path, { method = 'GET', body, query } = {}) {
+  let url = path.startsWith('http') ? path : 'https://api.spotify.com/v1' + path;
+  if (query) {
+    const q = new URLSearchParams(Object.entries(query).filter(([, v]) => v != null && v !== ''));
+    url += (url.includes('?') ? '&' : '?') + q;
+  }
+  for (let attempt = 0; attempt < 4; attempt++) {
+    let res;
+    try {
+      res = await invoke('spotify', { method, url, body: body !== undefined ? JSON.stringify(body) : null });
+    } catch (e) {
+      const msg = String(e);
+      if (msg === 'LOGIN' || msg === 'SCOPES') bus.emit('logged-out', msg);
+      if (attempt < 2 && !/LOGIN|SCOPES|bad url/.test(msg)) {
+        await sleep(600);
+        continue;
+      }
+      throw new Error(msg);
+    }
+    if (res.status === 429) {
+      await sleep(Math.min(10, res.retry_after || 1) * 1000);
+      continue;
+    }
+    let data = null;
+    try {
+      data = res.text ? JSON.parse(res.text) : null;
+    } catch {}
+    if (res.status >= 400) {
+      const err = new Error(data?.error?.message || `HTTP ${res.status}`);
+      err.status = res.status;
+      throw err;
+    }
+    return data;
+  }
+  throw new Error('Spotify is busy, try again');
+}
+
+export async function pages(path, { max = 2000, query, onPage } = {}) {
+  let out = [];
+  let next = path;
+  let first = true;
+  while (next && out.length < max) {
+    const data = await api(next, first ? { query } : {});
+    first = false;
+    if (!data) break;
+    const block = data.items ? data : data.tracks?.items ? data.tracks : data;
+    const items = block?.items || [];
+    out = out.concat(items);
+    onPage?.(out, block);
+    next = block?.next || null;
+  }
+  return out;
+}
+
+export function normTrack(t) {
+  if (!t || !t.uri || t.is_local) return null;
+  return {
+    uri: t.uri,
+    id: t.id,
+    name: t.name,
+    artists: (t.artists || []).map((a) => ({ name: a.name, uri: a.uri, id: a.id })),
+    album: t.album ? { name: t.album.name, uri: t.album.uri, id: t.album.id, images: t.album.images || [] } : null,
+    duration: t.duration_ms || 0,
+    explicit: !!t.explicit,
+  };
+}
+
+let me = null;
+export async function getMe() {
+  if (!me) me = await api('/me');
+  return me;
+}
+
+const likedCache = new Map();
+export async function areLiked(uris) {
+  const missing = uris.filter((u) => u && !likedCache.has(u));
+  for (let i = 0; i < missing.length; i += 40) {
+    const chunk = missing.slice(i, i + 40);
+    try {
+      const res = await api('/me/library/contains', { query: { uris: chunk.join(',') } });
+      chunk.forEach((u, k) => likedCache.set(u, !!res?.[k]));
+    } catch {
+      const ids = chunk.map((u) => u.split(':').pop());
+      try {
+        const res = await api('/me/tracks/contains', { query: { ids: ids.join(',') } });
+        chunk.forEach((u, k) => likedCache.set(u, !!res?.[k]));
+      } catch {}
+    }
+  }
+  return uris.map((u) => likedCache.get(u) || false);
+}
+
+export function markLiked(uri, on) {
+  likedCache.set(uri, on);
+}
+
+export async function setLiked(uri, on) {
+  const method = on ? 'PUT' : 'DELETE';
+  try {
+    await api('/me/library', { method, query: { uris: uri } });
+  } catch {
+    await api('/me/tracks', { method, query: { ids: uri.split(':').pop() } });
+  }
+  likedCache.set(uri, on);
+  bus.emit('liked-changed', { uri, on });
+}
+
+export const inLibrary = areLiked;
+
+export async function saveToLibrary(uri, on) {
+  await api('/me/library', { method: on ? 'PUT' : 'DELETE', query: { uris: uri } });
+  markLiked(uri, on);
+  bus.emit('library-changed', { uri, on });
+}
+
+export async function createPlaylist(name, description = '') {
+  return api('/me/playlists', { method: 'POST', body: { name, description, public: false } });
+}
+
+export async function updatePlaylist(id, fields) {
+  return api(`/playlists/${id}`, { method: 'PUT', body: fields });
+}
+
+export async function addToPlaylist(id, uris) {
+  return api(`/playlists/${id}/items`, { method: 'POST', body: { uris } });
+}
+
+export async function removeFromPlaylist(id, uris, snapshot) {
+  const body = { items: uris.map((uri) => ({ uri })) };
+  if (snapshot) body.snapshot_id = snapshot;
+  return api(`/playlists/${id}/items`, { method: 'DELETE', body });
+}

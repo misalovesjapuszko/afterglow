@@ -1,0 +1,16 @@
+/* name: Vaporwave */
+:root {
+  --bg: #120a24;
+  --bg-elev: #1e1238;
+  --bg-hover: rgba(255, 110, 230, 0.08);
+  --bg-active: rgba(255, 110, 230, 0.14);
+  --sidebar: linear-gradient(180deg, rgba(70, 20, 100, 0.82), rgba(18, 40, 80, 0.82));
+  --line: rgba(255, 140, 240, 0.1);
+  --text: #fdf0ff;
+  --muted: #b9a3d9;
+  --dim: #7d68a0;
+  --accent: #ff4fd8;
+}
+#player { background: linear-gradient(90deg, rgba(40, 14, 70, 0.92), rgba(14, 30, 64, 0.92)); }
+.brand span { background: linear-gradient(90deg, #ff4fd8, #4ff0ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+h1.page-title { background: linear-gradient(90deg, #ffd1f7, #b3f6ff); -webkit-background-clip: text; background-clip: text; color: transparent; }

@@ -1,0 +1,12 @@
+/* name: OLED */
+:root {
+  --bg: #000000;
+  --bg-elev: #0b0b0d;
+  --bg-hover: rgba(255, 255, 255, 0.06);
+  --bg-active: rgba(255, 255, 255, 0.1);
+  --sidebar: #000000;
+  --line: rgba(255, 255, 255, 0.08);
+}
+#player { background: #000000; backdrop-filter: none; }
+#topbar.scrolled { background: #000000; backdrop-filter: none; }
+#ambient { opacity: 0.55; }

@@ -1,0 +1,73 @@
+name: iOS
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  ios:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      # Xcode 26+ has the iOS 26 SDK with UIGlassEffect (Liquid Glass) for the native bars
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Native tools (xcodegen)
+        run: brew install xcodegen
+
+      - uses: cargo-bins/cargo-binstall@main
+      - name: Install Tauri CLI (native Apple Silicon build)
+        run: |
+          cargo binstall -y --force --targets aarch64-apple-darwin tauri-cli@^2
+          file "$(which cargo-tauri)"
+
+      - name: Generate the Xcode project
+        working-directory: src-tauri
+        run: cargo tauri ios init --ci
+
+      - name: Info.plist
+        run: |
+          P=$(ls src-tauri/gen/apple/*_iOS/Info.plist | head -1)
+          pb() { /usr/libexec/PlistBuddy -c "$1" "$P" 2>/dev/null || true; }
+          pb "Add :NSAppTransportSecurity dict"
+          # the Spotify login redirect comes back to a tiny server inside the app (127.0.0.1)
+          pb "Add :NSAppTransportSecurity:NSAllowsLocalNetworking bool true"
+          pb "Delete :CFBundleDisplayName"
+          pb "Add :CFBundleDisplayName string Afterglow"
+          pb "Add :UIStatusBarStyle string UIStatusBarStyleLightContent"
+          pb "Add :UIViewControllerBasedStatusBarAppearance bool false"
+          plutil -p "$P"
+
+      # Must go through `tauri ios build`: Xcode's "Build Rust Code" phase asks the running
+      # Tauri CLI for its options, so a bare xcodebuild produces an .app with no binary.
+      - name: Build unsigned IPA
+        working-directory: src-tauri
+        run: cargo tauri ios build --target aarch64 --no-sign --ci
+
+      - name: Collect + verify IPA
+        run: |
+          set -euo pipefail
+          IPA=$(find src-tauri/gen/apple -name "*.ipa" -type f | head -1)
+          [ -n "$IPA" ] || { echo "::error::no .ipa produced"; exit 1; }
+          cp "$IPA" Afterglow-iOS-unsigned.ipa
+          unzip -l Afterglow-iOS-unsigned.ipa | tail -25
+          # refuse to ship an empty shell again
+          unzip -l Afterglow-iOS-unsigned.ipa | grep -q "Payload/Afterglow.app/Afterglow$" \
+            || { echo "::error::IPA has no Afterglow executable"; exit 1; }
+          ls -la Afterglow-iOS-unsigned.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Afterglow-iOS-unsigned
+          path: Afterglow-iOS-unsigned.ipa

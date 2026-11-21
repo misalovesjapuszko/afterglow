@@ -1,0 +1,14 @@
+/* name: Midnight */
+:root {
+  --bg: #070b18;
+  --bg-elev: #0f1630;
+  --bg-hover: rgba(120, 150, 255, 0.07);
+  --bg-active: rgba(120, 150, 255, 0.13);
+  --sidebar: rgba(10, 16, 38, 0.78);
+  --line: rgba(140, 170, 255, 0.09);
+  --text: #eef2ff;
+  --muted: #8f9bc0;
+  --dim: #5d6a90;
+  --accent: #5b9dff;
+}
+#player { background: rgba(8, 13, 30, 0.88); }

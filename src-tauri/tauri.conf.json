@@ -1,0 +1,67 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Afterglow",
+  "version": "1.0.0",
+  "identifier": "dev.misalovesjapuszko.afterglow",
+  "build": {
+    "frontendDist": "../ui"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "Afterglow",
+        "width": 1240,
+        "height": 800,
+        "minWidth": 860,
+        "minHeight": 580,
+        "useHttpsScheme": true,
+        "backgroundColor": "#0b0b10"
+      }
+    ],
+    "security": {
+      "csp": null
+    },
+    "enableGTKAppId": true
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "deb",
+      "rpm",
+      "appimage",
+      "nsis",
+      "msi"
+    ],
+    "category": "Music",
+    "shortDescription": "Beautiful, lightweight Spotify client with synced lyrics",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.png",
+      "icons/icon.ico"
+    ],
+    "publisher": "Misalovesjapuszko",
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "displayLanguageSelector": false,
+        "installerIcon": "icons/icon.ico"
+      }
+    },
+    "iOS": {
+      "minimumSystemVersion": "15.0"
+    },
+    "linux": {
+      "deb": {
+        "depends": []
+      },
+      "rpm": {
+        "depends": []
+      }
+    }
+  }
+}

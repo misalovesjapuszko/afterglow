@@ -1,0 +1,14 @@
+/* name: Sunset */
+:root {
+  --bg: #140c10;
+  --bg-elev: #22131a;
+  --bg-hover: rgba(255, 150, 110, 0.07);
+  --bg-active: rgba(255, 150, 110, 0.13);
+  --sidebar: rgba(40, 18, 24, 0.72);
+  --line: rgba(255, 160, 120, 0.09);
+  --text: #fff4ee;
+  --muted: #c7a597;
+  --dim: #8a6a5e;
+  --accent: #ff7a59;
+}
+#player { background: rgba(26, 13, 16, 0.88); }

@@ -1,0 +1,8 @@
+# build output
+src-tauri/target/
+src-tauri/gen/schemas/
+dist/
+
+# local-only extras (kept on this PC, never published)
+src-tauri/src/local.rs
+ui/js/local/

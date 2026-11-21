@@ -1,0 +1,34 @@
+# Flatpak: runs on (almost) any Linux, old or new, glibc or musl, because it brings its own
+# runtime. Packs the binary built by the Linux CI job.
+app-id: dev.misalovesjapuszko.afterglow
+runtime: org.gnome.Platform
+runtime-version: '48'
+sdk: org.gnome.Sdk
+command: afterglow
+finish-args:
+  - --share=ipc
+  - --share=network
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --socket=pulseaudio
+  - --device=dri
+  - --own-name=org.mpris.MediaPlayer2.afterglow
+  - --talk-name=org.freedesktop.Notifications
+  - --filesystem=xdg-music/Afterglow:create
+modules:
+  - name: afterglow
+    buildsystem: simple
+    sources:
+      - type: file
+        path: afterglow
+      - type: file
+        path: dev.misalovesjapuszko.afterglow.desktop
+      - type: file
+        path: dev.misalovesjapuszko.afterglow.metainfo.xml
+      - type: file
+        path: icon.png
+    build-commands:
+      - install -Dm755 afterglow /app/bin/afterglow
+      - install -Dm644 dev.misalovesjapuszko.afterglow.desktop /app/share/applications/dev.misalovesjapuszko.afterglow.desktop
+      - install -Dm644 dev.misalovesjapuszko.afterglow.metainfo.xml /app/share/metainfo/dev.misalovesjapuszko.afterglow.metainfo.xml
+      - install -Dm644 icon.png /app/share/icons/hicolor/256x256/apps/dev.misalovesjapuszko.afterglow.png
