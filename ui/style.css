@@ -598,7 +598,7 @@ body.np-open > #sidebar, body.np-open > #main, body.np-open > #player, body.np-o
 
 #pairing { position: fixed; top: calc(var(--player-h) + var(--gap) * 2); left: 50%; transform: translateX(-50%); z-index: 40; background: rgba(var(--art-rgb), 0.6); color: #fff; padding: 12px 20px; border-radius: 16px; font-weight: 600; font-size: 14px; max-width: 640px; text-align: center; line-height: 1.45; }
 
-#welcome { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; background: radial-gradient(80% 80% at 20% 10%, rgba(255, 55, 95, 0.45), transparent 60%), radial-gradient(80% 80% at 90% 90%, rgba(64, 120, 255, 0.4), transparent 60%), radial-gradient(60% 60% at 70% 20%, rgba(175, 82, 222, 0.3), transparent 60%), #0b0b10; overflow-y: auto; padding: 30px; }
+#welcome { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; background: radial-gradient(80% 80% at 20% 10%, rgba(139, 92, 246, 0.45), transparent 60%), radial-gradient(80% 80% at 90% 90%, rgba(64, 120, 255, 0.4), transparent 60%), radial-gradient(60% 60% at 70% 20%, rgba(175, 82, 222, 0.3), transparent 60%), #0b0b10; overflow-y: auto; padding: 30px; }
 .wc-card { width: min(520px, 100%); border-radius: 30px; padding: 38px; user-select: text; animation: heroIn 0.8s var(--spring) backwards; }
 .wc-logo { width: 76px; height: 76px; background: url("icon.png") center/contain no-repeat; filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.5)); margin-bottom: 22px; animation: float 5s ease-in-out infinite; }
 @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
@@ -623,7 +623,7 @@ select.field { appearance: none; background-image: linear-gradient(45deg, transp
 .wc-dots i { width: 22px; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.14); transition: background 0.5s, width 0.5s var(--spring); }
 .wc-dots i.on { background: linear-gradient(90deg, #8b5cf6, #af52de); width: 34px; }
 .wc-step h2 { margin: 2px 0 8px; font-size: 26px; letter-spacing: -0.03em; }
-.wc-kicker { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #ff7a93; }
+.wc-kicker { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #a78bfa; }
 .wc-feats { display: grid; gap: 8px; margin: 4px 0 18px; }
 .wc-feats div { display: flex; gap: 12px; align-items: center; padding: 11px 14px; border-radius: 14px; background: rgba(255, 255, 255, 0.05); font-size: 14.5px; animation: rise 0.6s var(--ease) backwards; }
 .wc-feats div:nth-child(2) { animation-delay: 0.08s; } .wc-feats div:nth-child(3) { animation-delay: 0.16s; }
