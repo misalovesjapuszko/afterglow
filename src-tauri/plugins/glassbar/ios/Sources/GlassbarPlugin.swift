@@ -36,7 +36,7 @@ class ShowArgs: Decodable {
   let visible: Bool
 }
 
-private let accent = UIColor(red: 1.0, green: 0.22, blue: 0.37, alpha: 1)
+private let accent = UIColor(red: 0.545, green: 0.361, blue: 0.965, alpha: 1) // #8b5cf6, same purple as the website
 
 /// A rounded glass panel: UIGlassEffect on iOS 26+, a dark blur before that.
 private func makeGlass(cornerRadius: CGFloat) -> UIVisualEffectView {

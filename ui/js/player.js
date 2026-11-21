@@ -346,7 +346,7 @@ function remoteBackend() {
   const poll = async () => {
     try {
       const sent = performance.now();
-      const s = await api('/me/player');
+      const s = await api('/me/player', { background: true });
       const half = (performance.now() - sent) / 2;
       if (!s) return update({ playing: false });
       syncClock((s.progress_ms || 0) + (s.is_playing ? half : 0), {
@@ -362,7 +362,7 @@ function remoteBackend() {
   };
   const after = (p) => Promise.resolve(p).finally(() => setTimeout(poll, 400));
   timer = setInterval(() => !document.hidden && poll(), 3000);
-  const fast = setInterval(() => !document.hidden && document.querySelector('#np.open') && poll(), 1000);
+  const fast = setInterval(() => !document.hidden && document.querySelector('#np.open') && poll(), 2000);
   bus.on('resync', poll);
   poll();
   return {

@@ -36,6 +36,15 @@ jobs:
         working-directory: src-tauri
         run: cargo tauri ios init --ci
 
+      # `ios init` ships Tauri's default logo as the app icon; use ours (same art as every
+      # other platform, full-bleed square because iOS rounds the corners itself)
+      - name: App icon
+        run: |
+          set -euo pipefail
+          SET=src-tauri/gen/apple/Assets.xcassets/AppIcon.appiconset
+          cp src-tauri/icons/ios/*.png "$SET"/
+          ls "$SET"
+
       - name: Info.plist
         run: |
           P=$(ls src-tauri/gen/apple/*_iOS/Info.plist | head -1)

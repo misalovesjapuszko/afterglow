@@ -13,13 +13,44 @@ export async function getToken(force = false) {
   return cached.token;
 }
 
-export async function api(path, { method = 'GET', body, query } = {}) {
+// When Spotify says "too many requests", everyone waits until this time instead of retrying
+// on their own (which only keeps the limit going). Background polls skip instead of waiting.
+let coolUntil = 0;
+// Short-lived cache for page data, so going back to a page is instant. Any change (PUT/POST/
+// DELETE) clears it; the live player endpoints are never cached.
+const CACHE_MS = 120000;
+const cache = new Map();
+const inflight = new Map();
+const cacheable = (url) => !/\/me\/player/.test(url);
+
+export async function api(path, { method = 'GET', body, query, background = false, fresh = false } = {}) {
   let url = path.startsWith('http') ? path : 'https://api.spotify.com/v1' + path;
   if (query) {
     const q = new URLSearchParams(Object.entries(query).filter(([, v]) => v != null && v !== ''));
     url += (url.includes('?') ? '&' : '?') + q;
   }
+  if (method !== 'GET') cache.clear();
+  else if (cacheable(url)) {
+    const hit = cache.get(url);
+    if (hit && !fresh && Date.now() - hit.at < CACHE_MS) return hit.data;
+    if (inflight.has(url)) return inflight.get(url);
+    const p = request(url, method, body, background).then((data) => {
+      cache.set(url, { at: Date.now(), data });
+      return data;
+    });
+    inflight.set(url, p);
+    return p.finally(() => inflight.delete(url));
+  }
+  return request(url, method, body, background);
+}
+
+async function request(url, method, body, background) {
   for (let attempt = 0; attempt < 4; attempt++) {
+    const wait = coolUntil - Date.now();
+    if (wait > 0) {
+      if (background) throw new Error('rate limited');
+      await sleep(wait);
+    }
     let res;
     try {
       res = await invoke('spotify', { method, url, body: body !== undefined ? JSON.stringify(body) : null });
@@ -33,7 +64,8 @@ export async function api(path, { method = 'GET', body, query } = {}) {
       throw new Error(msg);
     }
     if (res.status === 429) {
-      await sleep(Math.min(10, res.retry_after || 1) * 1000);
+      coolUntil = Math.max(coolUntil, Date.now() + Math.min(30, res.retry_after || 2) * 1000);
+      if (background) throw new Error('rate limited');
       continue;
     }
     let data = null;

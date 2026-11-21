@@ -435,17 +435,19 @@ async function home({ el, alive }) {
   if (!albums.length && !library.playlists.length && !topTracks.length) el.insertAdjacentHTML('beforeend', '<div class="empty">Play something and it will show up here.</div>');
 }
 
+// kept while the app is open (switching tabs), forgotten when it closes
+let lastSearch = '';
 async function search({ el, alive }) {
   el.innerHTML = `<h1 class="page-title">Search</h1><div class="search-box"><i data-icon="search"></i><input id="q" placeholder="Songs, artists, albums, playlists" autocomplete="off" spellcheck="false"></div><div id="results"></div>`;
   hydrateIcons(el);
   const input = $('#q', el);
   const out = $('#results', el);
-  input.value = store.get('lastSearch', '');
+  input.value = lastSearch;
   let timer = 0;
   let seq = 0;
   const run = async () => {
     const q = input.value.trim();
-    store.set('lastSearch', q);
+    lastSearch = q;
     if (!q) {
       out.innerHTML = '<div class="empty">Find your next favourite song.</div>';
       return;
@@ -724,13 +726,13 @@ async function settings({ el }) {
   setTitle('Settings');
   const cfg = await invoke('get_config');
   const os = await invoke('platform');
-  const me = await getMe().catch(() => null);
-  const plugins = await invoke('list_plugins');
+  // never wait on the network here: the account name fills in when Spotify answers
+  const [plugins, me] = await Promise.all([invoke('list_plugins'), Promise.race([getMe().catch(() => null), new Promise((r) => setTimeout(r, 300))])]);
   const disabled = new Set(cfg.disabled_plugins || []);
   const engineNames = { web: 'Spotify Web Player', soloist: 'Spotify Soloist', remote: 'Remote control', none: 'Starting…' };
   el.innerHTML = `<h1 class="page-title">Settings</h1><div class="settings">
     <div class="set-group"><h3>Account</h3>
-      <div class="set-row"><div><div class="set-label">${esc(me?.display_name || 'Spotify')}</div><div class="set-desc">Client ID ${esc(cfg.client_id || '')}</div></div><button class="pill-btn" id="s-logout">Log out</button></div>
+      <div class="set-row"><div><div class="set-label" id="s-me">${esc(me?.display_name || 'Spotify')}</div><div class="set-desc">Client ID ${esc(cfg.client_id || '')}</div></div><button class="pill-btn" id="s-logout">Log out</button></div>
     </div>
     <div class="set-group"><h3>Playback</h3>
       <div class="set-row"><div><div class="set-label">Engine</div><div class="set-desc">Auto picks the Spotify web player when this system supports it${os === 'linux' ? ', then Soloist' : ''}, else it remote-controls your other Spotify devices.</div></div>
@@ -771,6 +773,7 @@ async function settings({ el }) {
     <div class="set-group"><h3>About</h3><div class="set-row"><div><div class="set-label">Afterglow 0.2</div><div class="set-desc">Lyrics from Spotify (Musixmatch) and LRCLIB. Music and data from Spotify.</div></div></div></div>
   </div>`;
   hydrateIcons(el);
+  if (!me) getMe().then((m) => m?.display_name && $('#s-me', el) && ($('#s-me', el).textContent = m.display_name)).catch(() => {});
   const rows = $$('.set-group', el);
   $('#s-logout', el).onclick = async () => {
     await invoke('logout');
@@ -835,7 +838,7 @@ async function settings({ el }) {
   const grid = $('#theme-grid', el);
   const renderThemes = () => {
     const infos = [
-      { file: null, name: 'Default', bg: '#0b0b10', elev: '#15151c', accent: '#fa2d48', sidebar: 'rgba(18,18,24,.72)' },
+      { file: null, name: 'Default', bg: '#0b0b10', elev: '#15151c', accent: '#8b5cf6', sidebar: 'rgba(18,18,24,.72)' },
       { file: '@album', name: 'Album', album: true, bg: 'linear-gradient(135deg,#3b1d5e,#7a2848 50%,#1d4a6b)', elev: 'rgba(255,255,255,.18)', accent: '#ffb14f', sidebar: 'rgba(0,0,0,.35)' },
       ...themes.list.map(themeInfo),
     ];

@@ -102,7 +102,7 @@ export const themes = { list: [], active: null };
 export function themeInfo(t) {
   const v = (k) => t.css.match(new RegExp(`--${k}\\s*:\\s*([^;]+);`))?.[1]?.trim();
   const name = t.css.match(/name:\s*([^*\n]+)/)?.[1]?.trim() || t.css.match(/\/\*\s*([^—*\n-]+)/)?.[1]?.trim() || t.name.replace(/^theme-|\.css$/g, '');
-  return { file: t.name, name, bg: v('bg') || '#0b0b10', elev: v('bg-elev') || '#15151c', accent: v('accent') || '#fa2d48', sidebar: v('sidebar') || 'rgba(18,18,24,.72)' };
+  return { file: t.name, name, bg: v('bg') || '#0b0b10', elev: v('bg-elev') || '#15151c', accent: v('accent') || '#8b5cf6', sidebar: v('sidebar') || 'rgba(18,18,24,.72)' };
 }
 
 export const ALBUM_THEME = '@album';
